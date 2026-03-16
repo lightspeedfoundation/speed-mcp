@@ -1,0 +1,121 @@
+Metadata-Version: 2.4
+Name: speed-mcp-server
+Version: 0.1.0
+Summary: MCP server holding 0x, Alchemy, Squid, OpenSea keys so agents can use speed-cli without configuring them. Wallet PRIVATE_KEY stays local in ~/.speed.
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: cryptography>=43.0.0
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: mcp>=1.23.0
+Requires-Dist: python-dotenv>=1.0.0
+
+# speed-mcp-server
+
+MCP server that holds **0x**, **Alchemy**, **Squid**, and **OpenSea** API keys so agents can use [speed-cli](https://www.npmjs.com/package/@lightspeed-cli/speed-cli) without configuring them. **Wallet private keys stay local** in `~/.speed/.env` only.
+
+## Why
+
+- Agents get swap quotes, bridge quotes, and balances without the user running `speed setup` or pasting API keys.
+- Keys live on the server; the agent never sees them (except when you explicitly use `get_speed_env_vars` to run `speed` with merged env).
+- User keeps `PRIVATE_KEY` in `~/.speed/.env`; the server never touches it.
+
+## Setup
+
+1. **Create `.env`** in this directory (or set env vars):
+
+   ```env
+   ALCHEMY_API_KEY=your_alchemy_api_key
+   0X_API_KEY=your_0x_api_key
+   SQUID_INTEGRATOR_ID=your_squid_integrator_id
+   OPENSEA_API_KEY=your_opensea_api_key
+   ```
+
+   Copy from `.env.example`. Get keys from:
+
+   - [Alchemy](https://dashboard.alchemy.com/) → Create app
+   - [0x Dashboard](https://dashboard.0x.org/) → Create app
+   - [Squid integrator form](https://form.typeform.com/to/cqFtqSvX)
+   - [OpenSea](https://docs.opensea.io/reference/api-keys) (for SANS listing/offers)
+
+2. **Install and run**:
+
+   ```bash
+   cd speed-mcp-server
+   pip install -e .
+   speed-mcp
+   ```
+
+   Or with a venv:
+
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate   # Windows
+   pip install -e .
+   speed-mcp
+   ```
+
+## Cursor MCP config
+
+Add the server so Cursor spawns it (stdio). In **Cursor** → **Open MCP settings** (`Ctrl+Shift+P` → "Open MCP settings"), add:
+
+```json
+{
+  "mcpServers": {
+    "speed": {
+      "command": "c:\\path\\to\\speed-mcp-server\\.venv\\Scripts\\speed-mcp.exe",
+      "env": {}
+    }
+  }
+}
+```
+
+Or point to your Python and the module:
+
+```json
+{
+  "mcpServers": {
+    "speed": {
+      "command": "python",
+      "args": ["-m", "speed_mcp_server.main"],
+      "cwd": "c:\\Users\\raxac\\OneDrive\\Desktop\\apps\\speedtest\\speed-mcp-server",
+      "env": {}
+    }
+  }
+}
+```
+
+Load API keys from a `.env` in `cwd` by running from the server directory, or set `env` with the keys (avoid committing those).
+
+## Tools
+
+| Tool | Description |
+|------|-------------|
+| `get_speed_env_vars` | Returns env vars (plain or encrypted). Pass optional `client_public_key_pem` (RSA PEM) to get an encrypted blob that only the client can decrypt; use for secure `speed setup`. |
+| `get_balance` | Native balance for an address on a chain (Alchemy). chain_id: 1=ETH, 8453=Base, 10=OP, 42161=Arbitrum, 137=Polygon, 56=BNB. |
+| `get_swap_quote` | 0x swap quote (sellToken, buyToken, sellAmount, chainId). |
+| `get_bridge_quote` | Squid bridge/route quote (fromChain, toChain, tokens, amount, fromAddress). |
+| `run_speed_with_env` | Returns instructions + command so the agent runs a speed command with env from `get_speed_env_vars`; signing uses local PRIVATE_KEY. |
+
+## Integration with speed-cli
+
+- **Read-only** (balance, quotes): use the MCP tools; no need to run speed.
+- **Actions** (swap, bridge, SANS list/buy/offer): agent calls `get_speed_env_vars`, sets those env vars in the shell, then runs `speed <command>`. The user’s `~/.speed/.env` supplies `PRIVATE_KEY`; the server never sees it.
+
+## Secure setup (encrypted)
+
+Credentials can be sent **encrypted** so only the client can read them. Use this for `speed setup` when talking to the MCP server.
+
+1. **Speed-CLI** (during setup):
+   - Generates an RSA keypair (e.g. 2048-bit) and stores the **private key** in `~/.speed/` (e.g. `speed_mcp_key.pem`). Never send the private key to the server.
+   - Calls MCP tool `get_speed_env_vars` with argument **client_public_key_pem** set to the PEM-encoded public key.
+2. **Server** encrypts the env dict with that public key (hybrid: AES-256-GCM for payload, RSA-OAEP-SHA256 for the AES key) and returns an object with:
+   - `encrypted: true`
+   - `algorithm: "RSA-OAEP-AES256GCM"`
+   - `encrypted_key_b64`, `nonce_b64`, `ciphertext_b64` (base64-encoded).
+3. **Speed-CLI** decrypts using its private key: decrypt `encrypted_key_b64` with RSA-OAEP-SHA256 to get the AES key; decrypt `ciphertext_b64` with AES-256-GCM using that key and `nonce_b64`; parse the result as JSON to get the env dict. Merge with `PRIVATE_KEY` and write `~/.speed/.env`.
+
+Credentials never cross the wire in plaintext; only the holder of the private key can recover them. In Node (Speed-CLI) use `node:crypto`: `crypto.privateDecrypt` (RSA-OAEP, SHA-256) for the key, then `crypto.createDecipheriv("aes-256-gcm", ...)` for the payload (use the 12-byte nonce and 16-byte auth tag at the end of the ciphertext if you follow standard GCM layout).
+
+## License
+
+MIT

@@ -1,0 +1,2 @@
+[console_scripts]
+speed-mcp = speed_mcp_server.main:main
