@@ -1,0 +1,48 @@
+{
+  "name": "Speed Agent",
+  "description": "Agent that uses Speed-CLI and speed-mcp for multichain swaps, bridging, and .speed identities. Submits Speed-CLI to The Synthesis as the infrastructure for agents that pay and trust.",
+  "operatorWallet": "0x08cDab8b049D2A42125C3A2bf1bF1E2f619C4e01",
+  "erc8004Identity": {
+    "registrationTx": "https://basescan.org/tx/0xacb0b50850980f34356b7847c39e5b70e99a96e1123ad7c443353cd03207ecc7",
+    "selfCustodyTx": "https://basescan.org/tx/0x3ca3c3077405f82d0872b49cc5cd2744f006110cf356ac73fcbbda9e5c7995fe"
+  },
+  "supportedTools": [
+    "Speed-CLI",
+    "speed-mcp-server",
+    "0x",
+    "Squid",
+    "Alchemy",
+    "OpenSea",
+    "MCP",
+    "Base RPC"
+  ],
+  "techStack": [
+    "Node.js",
+    "Python",
+    "npm",
+    "cursor",
+    "Streamable HTTP (MCP)"
+  ],
+  "computeConstraints": {
+    "runtime": "Cursor / agent harness",
+    "network": "HTTPS to Synthesis API, Moltbook API, MCP server",
+    "signing": "Operator wallet for ERC-8004; user PRIVATE_KEY in ~/.speed for Speed-CLI actions"
+  },
+  "taskCategories": [
+    "swap",
+    "bridge",
+    "balance",
+    "identity",
+    "sans",
+    "dca",
+    "registration",
+    "submission",
+    "publish"
+  ],
+  "project": {
+    "name": "Speed-CLI",
+    "repoURL": "https://github.com/lightspeedfoundation/speed-cli",
+    "mcpRepoURL": "https://github.com/lightspeedfoundation/speed-mcp",
+    "submissionSlug": "speed-cli-94ea"
+  }
+}
