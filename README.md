@@ -122,7 +122,7 @@ Credentials can be sent **encrypted** so only the client can read them. Use this
   - `encrypted: true`
   - `algorithm: "RSA-OAEP-AES256GCM"`
   - `encrypted_key_b64`, `nonce_b64`, `ciphertext_b64` (base64-encoded).
-3. **Speed-CLI** decrypts using its private key: decrypt `encrypted_key_b64` with RSA-OAEP-SHA256 to get the AES key; decrypt `ciphertext_b64` with AES-256-GCM using that key and `nonce_b64`; parse the result as JSON to get the env dict. Merge with `PRIVATE_KEY` and write `~/.speed/.env`.
+3. **Speed-CLI** decrypts using its private key: decrypt `encrypted_key_b64` with RSA-OAEP-SHA256 to get the AES key; decrypt `ciphertext_b64` with AES-256-GCM using that key and `nonce_b64`; parse the result as JSON. The plaintext must include an **`env`** object (map of key names to values), e.g. `{"env":{"ALCHEMY_API_KEY":"..."}}`. Merge `env` with `PRIVATE_KEY` and write `~/.speed/.env`.
 
 Credentials never cross the wire in plaintext; only the holder of the private key can recover them. In Node (Speed-CLI) use `node:crypto`: `crypto.privateDecrypt` (RSA-OAEP, SHA-256) for the key, then `crypto.createDecipheriv("aes-256-gcm", ...)` for the payload (use the 12-byte nonce and 16-byte auth tag at the end of the ciphertext if you follow standard GCM layout).
 
