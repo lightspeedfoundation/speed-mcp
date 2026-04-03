@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+from mcp.server.transport_security import TransportSecuritySettings
 
 # Load .env from server directory or current working directory
 _env_path = Path(__file__).resolve().parent.parent / ".env"
@@ -21,6 +22,33 @@ RPC_URL = os.environ.get("RPC_URL", "").strip()
 MCP_TRANSPORT = os.environ.get("MCP_TRANSPORT", "stdio").strip().lower()
 MCP_HOST = os.environ.get("MCP_HOST", "0.0.0.0").strip()
 MCP_PORT = int(os.environ.get("MCP_PORT", "8000").strip() or "8000")
+# Comma-separated public hostnames when behind a reverse proxy (e.g. mcp.ispeed.pro).
+# Required for Streamable HTTP + loopback bind: Nginx sends Host: your domain; the MCP
+# SDK's DNS rebinding protection otherwise returns 421 Invalid Host header.
+MCP_ALLOWED_HOSTS = os.environ.get("MCP_ALLOWED_HOSTS", "").strip()
+
+
+def get_transport_security_settings() -> TransportSecuritySettings | None:
+    """When binding to loopback, add MCP_ALLOWED_HOSTS so nginx can forward the real Host header."""
+    if MCP_HOST not in ("127.0.0.1", "localhost", "::1"):
+        return None
+    extra = [x.strip() for x in MCP_ALLOWED_HOSTS.split(",") if x.strip()]
+    if not extra:
+        return None
+    allowed_hosts = ["127.0.0.1:*", "localhost:*", "[::1]:*"]
+    allowed_origins = ["http://127.0.0.1:*", "http://localhost:*", "http://[::1]:*"]
+    for h in extra:
+        allowed_hosts.append(h)
+        allowed_hosts.append(f"{h}:*")
+        for scheme in ("https", "http"):
+            allowed_origins.append(f"{scheme}://{h}")
+            allowed_origins.append(f"{scheme}://{h}:*")
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=allowed_hosts,
+        allowed_origins=allowed_origins,
+    )
+
 
 # Alchemy: same pattern as Speed CLI — https://${prefix}-mainnet.g.alchemy.com/v2/${apiKey}
 ALCHEMY_CHAIN_PREFIX: dict[int, str] = {

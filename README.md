@@ -84,6 +84,8 @@ To allow an MCP client on a **different machine** to connect, run the server wit
   - The client must use the **Streamable HTTP** transport and point to this base URL (the exact path may be `/mcp` or as required by your client SDK).
 4. **Firewall / network:** Ensure port 8000 (or your `MCP_PORT`) is open on the server and reachable from the client machine. For production, put the server behind HTTPS and consider auth (the MCP Python package supports auth options).
 
+**Behind Nginx (TLS) on loopback:** If you bind with `MCP_HOST=127.0.0.1` and proxy a public hostname (e.g. `mcp.example.com`), set **`MCP_ALLOWED_HOSTS=mcp.example.com`** (comma-separated for multiple). Otherwise the MCP Python SDK may return **HTTP 421 Invalid Host header** because Nginx forwards `Host: your.domain`.
+
 **Cursor (remote agent):** In MCP settings on the client machine, use a `url` entry instead of `command`, e.g. `"url": "http://your-server-ip:8000"` if Cursor supports URL-based MCP for Streamable HTTP.
 
 ## Tools

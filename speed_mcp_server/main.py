@@ -20,6 +20,7 @@ from .config import (
     SQUID_INTEGRATOR_ID,
     get_alchemy_rpc_url,
     get_speed_env,
+    get_transport_security_settings,
 )
 from .crypto_utils import encrypt_env_for_client
 
@@ -29,6 +30,7 @@ mcp = FastMCP(
     instructions="API keys for speed-cli (0x, Alchemy, Squid, OpenSea). Wallet PRIVATE_KEY stays local in ~/.speed.",
     host=MCP_HOST,
     port=MCP_PORT,
+    transport_security=get_transport_security_settings(),
 )
 
 
