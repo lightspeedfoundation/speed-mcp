@@ -6,13 +6,50 @@ from pathlib import Path
 from dotenv import load_dotenv
 from mcp.server.transport_security import TransportSecuritySettings
 
+
+def _apply_ox_key_from_env_file(path: Path) -> None:
+    """Apply 0X_API_KEY / OX_API_KEY from a .env file line-by-line.
+
+    python-dotenv (like Node's dotenv) often skips variable names that start with a digit.
+    Lightspeed-CLI does the same manual pass — see env.ts applyNumericPrefixedKeys.
+    """
+    if not path.is_file():
+        return
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError:
+        return
+    raw = raw.lstrip("\ufeff")
+    for line in raw.splitlines():
+        trimmed = line.strip()
+        if not trimmed or trimmed.startswith("#"):
+            continue
+        idx = trimmed.find("0X_API_KEY=")
+        idx_alt = trimmed.find("OX_API_KEY=")
+        key_start = idx if idx >= 0 else idx_alt if idx_alt >= 0 else -1
+        if key_start < 0:
+            continue
+        eq = trimmed.index("=", key_start)
+        rest = trimmed[eq + 1 :].strip()
+        if len(rest) >= 2 and rest[0] == rest[-1] and rest[0] in "\"'":
+            rest = rest[1:-1]
+        rest = rest.replace('\\"', '"').replace("\\\\", "\\").strip()
+        if rest:
+            os.environ["0X_API_KEY"] = rest
+            os.environ["OX_API_KEY"] = rest
+        return
+
+
 # Load .env from server directory or current working directory
 _env_path = Path(__file__).resolve().parent.parent / ".env"
+_apply_ox_key_from_env_file(_env_path)
 load_dotenv(_env_path)
 load_dotenv()
+_apply_ox_key_from_env_file(Path.cwd() / ".env")
 
 ALCHEMY_API_KEY = os.environ.get("ALCHEMY_API_KEY", "").strip()
-OX_API_KEY = os.environ.get("0X_API_KEY", "").strip()
+# Match Speed CLI: OX_API_KEY alias; 0X_API_KEY may only appear via _apply_ox_key_from_env_file above.
+OX_API_KEY = os.environ.get("0X_API_KEY", "").strip() or os.environ.get("OX_API_KEY", "").strip()
 SQUID_INTEGRATOR_ID = os.environ.get("SQUID_INTEGRATOR_ID", "").strip()
 OPENSEA_API_KEY = os.environ.get("OPENSEA_API_KEY", "").strip()
 # Optional: override RPC for Base (8453) only, same as Speed CLI's rpc.js

@@ -26,11 +26,11 @@ def encrypt_env_for_client(env: dict[str, str], client_public_key_pem: str) -> d
     Encrypt env dict so only the holder of the private key can decrypt.
     Returns dict with base64-encoded: encrypted_key (RSA-OAEP), nonce, ciphertext (AES-GCM).
 
-    The plaintext JSON must be ``{"env": {...}}`` — Speed-CLI decrypts and requires an ``env``
-    object (flat key/value map alone is rejected with "decrypted payload missing env object").
+    Plaintext is a flat JSON object ``{"ALCHEMY_API_KEY": "...", ...}`` (same as legacy speed-mcp).
+    Lightspeed-CLI ``decryptMcpEnv`` accepts this (legacy branch) or ``{"env": {...}}`` (wrapped).
     """
     public_key = _load_public_key(client_public_key_pem)
-    payload_bytes = json.dumps({"env": env}, sort_keys=True).encode("utf-8")
+    payload_bytes = json.dumps(env, sort_keys=True).encode("utf-8")
 
     # AES-256-GCM for payload; 96-bit nonce for GCM
     aes_key = AESGCM.generate_key(bit_length=256)
